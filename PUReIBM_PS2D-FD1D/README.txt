@@ -1,3 +1,5 @@
+Please contact us before you make an important change. We would like to make sure that everything you change can fit in our codes or our formulations.
+
 1) DESCRIPTION
 
 PUReIBM-PS2D-FD1D is a three-dimensional psudeo-spectral particle-resolved
