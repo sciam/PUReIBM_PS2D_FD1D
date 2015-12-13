@@ -1,0 +1,95 @@
+ &FLOANDGRID
+ TEND =    4.000000000000000     ,
+ NERR_STEPS =           100,
+ WTIME_MAXHRS =    23.00000000000     ,
+ RAMP_FRAC_STEPS = 0,
+ SAVEFORRES_TIME = 5.d0 ,
+ TOL_FERROR =    5.0E-05     ,
+ TOL_GRAN_ERROR = 5.0E-5,
+ VIS =   0.012,
+ RE = 20.0,
+ RHOF    =   1.000000000000     ,
+ CPF     =   4179.00000000000     ,
+ KF      =  0.613000000000000     ,
+ CFL = 0.1d0     ,
+ CFL_MAX = 0.5d0   ,
+ RET = 0.000000000000000     ,
+ FLO_ANG =  0.d0, 90.d0, 90.d0
+ /
+ &PART_PROPT
+ NBODY =            1,
+ F1 =    1.600000000000000     ,
+ F2 =    1.600000000000000     ,
+ LYBYD = 9,
+ DBYDX = 20,
+ DIA_PHYS =  1.D0   ,
+ RHOS = 100.0 ,
+ CPS =  447.0000000000000     ,
+ KS =   2.9999999329447746E-002,
+ INPUT_TYPE = 'random',
+ DISCR_SCHEME = 'upwind',
+ VOL_FRAC1 = 0.2, 
+ MIN_PART_SEP = 0.000000000000000     ,
+ COLLISION_TYPE = 'softsphere'
+ VEL_DISTRIB = 'maxwellian'
+ /
+ &FLAGS
+ IMOVE =            1,
+ ISCALON =            1,
+ IRESTART = 1,
+ iscal_restart = 1 , 
+ SAVEFORRESTART =            1,
+ ADAPTIVE =  T,
+ RK3 =  F,
+ MEAN_VEL_TO_PARTICLES =  F,
+ IMPOSE_GRAV = F,
+ DORPR = T,
+ DOBND = F 
+ INCLUDE_FRMEANFLUID = F 
+ SET_UMEAN = F,
+ CAGE_SIMUL = F,
+ FIXED_MOVING = T
+ /
+ &FILES
+ SAVEITNS =           10000,
+ WRITE_OUTPUT = T 
+ /
+ &PSD
+ PSD_TYPE = 'discrete'
+ SIGMABYDAVG = 0.2D0,
+ PHIAVG = 0.2,
+ NPHASES = 1,
+ EQUAL_MOMENTUM = F
+ /
+ &GCG
+ COEFF_REST = 1.0   ,
+ PVEL_VAR =    1.000000000000000     ,
+ MIN_COLISIONS =           10,
+ MIS_HS =            1
+ /
+ &BIDISPERSE
+ VOLFRAC_RAT = 1.0,
+ DIA_RATIO = 4.0
+ /
+ &MAT
+ HHAT =    2.000000000000000     ,
+ MIS_MAT =            1,
+ IBORDEL =  F
+/
+ &SCAL_PROPT
+ SETPHIMEAN = F,
+ NSPMX =            1,
+ PHISTREAM =   1.000000000000000     ,
+ PHISURF =   0.0000000000000000     ,
+ LUMPED_CAP =  F,
+ PR_OR_SC_NU =    0.7D0     ,
+ ZERO_FLOW_IN_SOLID =  F,
+ sourcepresent = F
+ /
+&POSTLIST
+POST_NO_FLOW_MEM_ALLOC = F,
+NMIS = 2,
+NBINS = 50,
+SKIP_NUM = 3
+/
+

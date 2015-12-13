@@ -1,0 +1,133 @@
+#!/bin/sh -w
+  DIR=$1
+  CPDIR=$1
+    function gen_seed() {
+    cd ${HOME}/GEN_SEED
+    ./seedgen.x >RUN
+    #echo -n "working dir=$1"
+    #echo -n 
+    cp seed.d $1 
+    cd $1
+    return
+    }
+ 
+   function prohibmy() {
+   x=`echo "scale=1 ; ($1*$2)" |bc`
+   echo $x
+   return
+   }
+
+  nfiles=5
+  files=("u" "nl" "p" "scal" "sphere_config")
+
+  mzz=1
+  zloop=("" "0.4" "8" "10" "0.4" "0.480" "0.633" "0.698" "0.73" "0.04" "0.02" "0.01")
+  myy=6
+  yloop=("0.01" "0.1" "0.2" "0.3" "0.4" "0.5" "10" "0.514" "0.3" "0.2" "0.04" "0.02" "0.01")
+  mxx=8
+  xloop=("0.0001" "0.001" "0.01" "1.0" "5" "10" "15" "20" "50" "100" "150" "200" "250" "300" "350" "400" "2.7" "2.9" "3.1" "3.3")
+  yloop_var1=("10" "20" "20" "30" "30" "40")
+  yloop_var2=("15" "7.5" "7.5" "5" "5" "4")
+  #WARNING: FOR 2-d case (i.e. zloop is null, then make sure zparam_name and zparam_default do not match any string in the the input file). Safest thing wud be to write JUNK for both like below
+  #zloopdirname=""
+  #zparam_name="JUNK"
+  #zparam_default="JUNK"
+  execfile="ibm.exe"
+  input_file="floparam.in"
+  test_for_blowup=1
+
+  max_queue_count=6
+
+  zloopdirname=""
+  zparam_name="JUNK"
+  zparam_default="JUNK"
+
+  yloopdirname="VOL_"
+  yparam_name="VOL_FRAC1"
+  yparam_default=0.1
+
+  xloopdirname="RE_"
+  xparam_name="RE"
+  xparam_default=10.0
+
+  yloop_var1_name="DBYDX"
+  yloop_var1_default=10
+  
+  yloop_var2_name="LYBYD"
+  yloop_var2_default=10
+  echo -e "default values = ${zparam_default}, ${yparam_default}, ${xparam_default}"
+  echo -e "param names = ${zparam_name}, ${yparam_name}, ${xparam_name}"
+  
+  echo -e "YLOOP VARIABLE NAMES = ${yloop_var1_name}, ${yloop_var2_name}"
+  echo -e "YLOOP VARIABLE VALUES = ${yloop_var1_default}, ${yloop_var2_default}"
+
+case $2 in
+   runs )
+   source set_mis_3d
+  ;;
+   pp )
+   source pp_converged_mis_3d
+  ;;
+   post )
+   source set_post_3d
+  ;;
+   rename )
+     if [ $3 ]; then
+        :
+     else
+        echo -e "NOT SPECIFIED IF DRY RUN OR ACTUAL RENAMING"
+        exit
+     fi
+     
+     case $3 in
+	-n )
+	echo -e "-n SPECIFIED: THIS WILL BE A DRY RUN OF RENAMING PROCEDURE"
+	dry_run=1
+	LOF="list_of_files_tobe_moved"
+	echo "LIST OF RUN NAMES AND DIRECTORIES WHERE FILES WILL BE MOVED" > ${LOF}
+     ;;
+	-R )
+	echo -e "-R SPECIFIED: FILES WILL BE RENAMED"
+	dry_run=0
+	LOF="list_of_files_moved"
+	
+	echo "LIST OF RUN NAMES AND DIRECTORIES WHERE FILES HAVE BEEN MOVED" > ${LOF}
+     ;;
+     *)
+     echo -e "NO VALID OPTION SPECIFIED FOR RENAMING"
+     exit
+     esac
+     LOF2="list_of_cases_with_no_restart_file"
+
+     echo "LIST OF RUN NAMES WITH DIRECTORIS WHERE NO RESTART FILE WAS FOUND" > ${LOF2}
+     
+     LOF2=`pwd`/${LOF2}
+     LOF=`pwd`/${LOF}
+	
+   source rst.scr ${dry_run}
+  ;;
+   scp )
+     if [ $3 ]; then
+        :
+     else
+        echo -e "second argument (for the base directory structure) not specified, exiting"
+        exit
+     fi
+     if [ $4 ]; then
+     
+        REM_MAC=$4
+     else
+     REM_MAC="rahul@129.186.209.35"
+     echo -e "CHOOSING THE DEFAULT REMOTE MACHINE, $REM_MAC"
+     fi
+
+  MAC_DATA_FOL="~"/`uname -n`"_DATA"
+
+  echo -e "REMOTE MACHINE IS ${REM_MAC} \n and Machine data folder is  ${MAC_DATA_FOL}"
+ source scp_data_3d $1 $3  
+  ;;
+    *)
+    echo -e "Second argument ($2) does not correspond to any case"
+  esac
+
+exit

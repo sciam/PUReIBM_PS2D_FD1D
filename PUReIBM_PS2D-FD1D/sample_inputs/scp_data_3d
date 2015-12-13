@@ -1,0 +1,122 @@
+#!/bin/sh -w
+  cont=1
+  function check_make_dir() {
+  if  `ssh ${1} "test -d ${2}"` ; then
+  echo -e "directory ${2} exists; not remaking it"
+  else
+  echo -e "directory ${2} does not exist; making a new one"
+  ssh ${1} "mkdir ${2}"
+  fi
+  return
+  }
+ check_make_dir ${REM_MAC} ${MAC_DATA_FOL}
+ 
+ CASE_DATA_FOL=${MAC_DATA_FOL}
+ START_PT=$2
+ END_PT=`basename $1`
+ END_PT_NOT_REACHED=1
+ while [ ${END_PT_NOT_REACHED} -eq 1 ] ; do
+	 
+ CURRENT_DIR=${1:${#START_PT}:${#1}}
+ echo -e "CURRENT DIR $CURRENT_DIR"
+ NEW_DIR=`echo ${CURRENT_DIR} | cut -d / -f 1`
+ START_PT=${START_PT}/${NEW_DIR}
+ echo -e "NEW_DIR=${NEW_DIR}"
+ if  test ${NEW_DIR} = ${END_PT}  ; then
+   END_PT_NOT_REACHED=0
+   echo -e "END_PT_NOT_REACHED=${END_PT_NOT_REACHED}"
+ fi
+ CASE_DATA_FOL=${CASE_DATA_FOL}/${NEW_DIR}
+ check_make_dir ${REM_MAC} ${CASE_DATA_FOL}
+	
+ done 
+ #exit
+ #check_make_dir ${REM_MAC} ${CASE_DATA_FOL}
+ scp *.dat ${REM_MAC}:${CASE_DATA_FOL}
+ #exit 
+  while [ $cont -eq 1 ]; do
+    echo -e "scp files for MIS:"
+
+    read MIS
+    RUN_NAME=MIS$MIS
+    echo -e "RUN_NAME  = $RUN_NAME"
+    
+    cd $DIR
+
+
+#  filelist="${RUN_NAME}_scalfluxsum.dat  ${RUN_NAME}_norm_drag.dat  ${RUN_NAME}_*.in ${RUN_NAME}_RUNINIT ${RUN_NAME}_RUNRES* ${RUN_NAME}_PHI_TWOPT_CORR.dat ${RUN_NAME}_E_spectra.dat"
+ filelist="${RUN_NAME}_scalfluxsum.dat"
+  for ((izz=0;izz<${mzz};izz+=1)); do
+    zdir=${zloopdirname}${zloop[$izz]}
+    rdir1=${CASE_DATA_FOL}/${zdir}
+ 
+    if  test -d $zdir  ; then   
+    	check_make_dir ${REM_MAC} ${rdir1}
+	else 
+       echo -e $DIR/$zdir "does not exist locally"
+	continue
+    fi
+    cd $DIR/$zdir
+    scp *.dat ${REM_MAC}:${rdir1}
+    
+  for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    rdir1b=${rdir1}/${ydir}
+    if  test -d $ydir  ; then   
+    	check_make_dir ${REM_MAC} ${rdir1b}
+	else 
+       echo -e $DIR/$zdir/$ydir "does not exist locally"
+       continue
+    fi
+    cd $DIR/$zdir/$ydir
+
+  for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    xdir=${xloopdirname}${xloop[$ixx]}
+
+    rdir2=${rdir1b}/${xdir}
+    if  test -d $xdir  ; then
+    check_make_dir ${REM_MAC} ${rdir2}
+
+    else 
+       echo -e $DIR/$zdir/$ydir/$xdir "does not exist locally"
+       continue
+        exit 
+    fi
+ 
+    cd $DIR/$zdir/$ydir/$xdir
+
+ #   scp ${filelist} ${REM_MAC}:${rdir2}
+    cd $DIR/$zdir/$ydir
+    done
+    cd $DIR/$zdir
+  done 
+    cd $DIR/
+ done
+  setuprund=n      
+  echo -n
+  echo -e "Do you want to set up run for another MIS (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -n
+    echo -e " Exiting the set up \n"
+    echo -n
+    cont=0 
+ ;;
+ esac
+
+ done
+
+# Send the remaining cases to queue
+    echo -n
+    echo -e "Sending the remaining jobs to queue $queue_count \n"
+    echo -n
+
+ exit

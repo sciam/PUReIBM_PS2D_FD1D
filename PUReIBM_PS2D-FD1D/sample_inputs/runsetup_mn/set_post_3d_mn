@@ -1,0 +1,159 @@
+#!/bin/sh -w
+  nodecount=0
+  nodelist=""
+  a=0
+  while read line
+  do a=$(($a+1));
+  modappend=1
+  for nodename in $nodelist
+   do
+     if test $nodename = $line 
+     then 
+	modappend=0
+        break
+     fi
+  done
+  if test $modappend -eq 1
+  then 
+    nodelist="$nodelist $line"
+    nodearray[$nodecount]=$line
+    nodecount=$(($nodecount+1))
+  fi
+  echo $line;
+  done < "$nodefile"
+  echo "Final node count is: $nodecount";
+  echo "FINAL nodelist = $nodelist"
+  inodecount=0
+  while [ $inodecount -lt $nodecount ]; do
+    echo -e "$inodecount th node id is ${nodearray[$inodecount]}"
+    node=${nodearray[$inodecount]}
+    let inodecount=$inodecount+1
+    echo "ssh $node \"pkill -u ${USER}\"" >> $killfile
+  done
+  cont=0
+  echo -e "nodelist for PARENT JOB:${PARENT_NAME}"
+  queue_count=0
+  inodecount=0
+  #this is to make   
+  while [ $cont -lt $nmis ]; do
+    MIS=${mis[$cont]}
+    RUN_NAME=MIS${MIS}
+    echo -e "MIS = $MIS"
+    
+    ires=${status[$cont]}
+  if [ $ires -eq 1 ]; then
+     echo -e "Post processing the runs\n"
+   else 
+     echo -e "Setting up new runs\n"
+  fi
+
+
+    for ((izz=0;izz<${mzz};izz+=1)); do
+    zdir=${zloopdirname}${zloop[$izz]}
+    echo -e "ZLOOP DIR = $zdir"
+	if  test -d $zdir ; then
+	    echo -e "directory $zdir exists"
+	else
+	echo -e "directory $zdir does not exist; skipping this case"
+	continue
+	fi	
+
+    cd $DIR/$zdir
+
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+	if  test -d $ydir ; then
+	    echo -e "directory $ydir exists"
+	else
+	echo -e "directory $ydir does not exist; skipping this case"
+	continue
+	fi	
+
+    cd $DIR/$zdir/$ydir    
+
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+
+
+    xdir=${xloopdirname}${xloop[$ixx]}
+    
+	if  test -d $xdir ; then
+	    echo -e "directory $xdir exists"
+	else
+	echo -e "directory $xdir does not exist; skipping this case"
+	continue
+	fi	
+    cd $DIR/$zdir/$ydir/$xdir
+    	    
+    	    
+	if  test -f ${RUN_NAME}_CONVERGED ; then
+	    echo -e "`pwd` is Converged \n"
+	if  test -f ${RUN_NAME}_POST_PROCESSED ; then
+	    echo -e "`pwd` is already post_processed \n"
+	    queue_add=0
+	else
+	    echo -e "`pwd` is not post_processed \n"
+	
+	    queue_add=1
+	    RUN=${RUN_NAME}_POST
+	    cp $CPDIR/post.exe .
+	fi
+	else
+	    echo -e "`pwd` is not Converged \n"
+	    queue_add=0
+	fi
+    
+
+    if [ $queue_add -eq 1 ]; then
+	case $queue_count in
+	    0)
+                
+		que_file_dir=`pwd`
+                exec_com="cd $que_file_dir ;time post.exe $RUN_NAME > $RUN & ;" 
+		;;
+	    *)
+	       
+		que_file_dir=`pwd`
+                exec_com=$exec_com"cd $que_file_dir ;time ./post.exe $RUN_NAME > $RUN & ;" 
+	esac
+
+	let queue_count=$queue_count+1 
+
+    fi
+
+    if [ "$queue_count" -eq $max_queue_count ]; then
+     queue_count=0
+     node=${nodearray[$inodecount]}
+      
+     inodecount=$(($inodecount+1))
+     echo -e "sending this job to node $node"
+     echo -e "command = $exec_com \n"
+     ssh $node "$exec_com" &
+    fi
+    cd ${DIR}/${zdir}/${ydir} 
+    done
+    cd ${DIR}/${zdir}
+    done 
+    cd $DIR
+  done
+ let cont=$cont+1 
+ done
+
+# Send the remaining cases to queue
+    echo -n
+    echo -e "Running the remaining jobs \n"
+    echo -n
+
+    if [ "$queue_count" -gt 0 ]; then
+	
+	if [ "$queue_count" -lt $max_queue_count ]; then
+ 
+          node=${nodearray[$inodecount]}
+      
+          echo -e "sending this job to node $node"
+          echo -e "command = $exec_com \n"
+	
+          ssh $node "$exec_com" &
+	fi
+    fi
+wait
+ exit

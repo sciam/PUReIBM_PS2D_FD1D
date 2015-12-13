@@ -1,0 +1,240 @@
+#!/bin/sh -w
+  cont=1
+  queue_count=0
+  queue_base=`basename ${DIR}`
+  while [ $cont -eq 1 ]; do
+    echo -e "Set up run for MIS:"
+
+    read MIS
+    RUN_NAME=MIS$MIS
+    echo -e "RUN_NAME  = $RUN_NAME, MIS = $MIS"
+    
+    cd $DIR
+
+  echo -n "Do you want to restart for MIS=$MIS. (y/n) [no] "
+  read restart
+
+ case $restart in
+   y|Y )
+     ires=1
+     echo -n
+     echo -e "Will be restarting the runs\n"
+     echo -n
+ ;;
+   *)
+     echo -e "Setting up new runs\n"
+     ires=0
+ ;;
+ esac
+    for ((izz=0;izz<${mzz};izz+=1)); do
+    zdir=${zloopdirname}${zloop[$izz]}
+    echo -e "ZLOOP DIR = $zdir"
+    if  test -d $zdir ; then
+       if [ $ires -eq 0 ]; then
+	  echo -e "directory $zdir exists; not remaking it"
+       else
+	  echo -e "directory $zdir exists; will proceed further with restart"
+	fi
+    else
+       if [ $ires -eq 0 ]; then
+	echo -e "directory $zdir does not exist; making a new one"
+	mkdir $zdir
+	else
+	echo -e "directory $zdir does not exist; skipping this case for restart"
+        continue
+       fi
+	
+    fi
+
+    cd $DIR/$zdir
+
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    if  test -d $ydir ; then
+       if [ $ires -eq 0 ]; then
+	  echo -e "directory $ydir exists; not remaking it"
+       else
+	  echo -e "directory $ydir exists; will proceed further with restart"
+	fi
+    else
+       if [ $ires -eq 0 ]; then
+	echo -e "directory $ydir does not exist; making a new one"
+	mkdir $ydir
+	else
+	echo -e "directory $ydir does not exist; skipping this case for restart"
+        continue
+       fi
+	
+    fi
+
+    cd $DIR/$zdir/$ydir    
+
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    xdir=${xloopdirname}${xloop[$ixx]}
+    if  test -d $xdir ; then
+       if [ $ires -eq 0 ]; then
+	  echo -e "directory $xdir exists; not remaking it"
+       else
+	  echo -e "directory $xdir exists; will proceed further with restart"
+	fi
+    else
+       if [ $ires -eq 0 ]; then
+	echo -e "directory $xdir does not exist; making a new one"
+	mkdir $xdir
+	else
+	echo -e "directory $xdir does not exist; skipping this case for restart"
+        continue
+       fi
+	
+    fi
+    cd $DIR/$zdir/$ydir/$xdir
+    if [ $ires -eq 0 ]; then
+	cp $CPDIR/${input_file} .
+	cp $CPDIR/sphr_center.inp .
+	sed -e "s|${zparam_name} = ${zparam_default}|${zparam_name} = ${zloop[$izz]}|g" <${input_file}> tmp1
+	sed -e "s|${yparam_name} = ${yparam_default}|${yparam_name} = ${yloop[$iyy]}|g" <tmp1> tmp2
+	sed -e "s|${xparam_name} = ${xparam_default}|${xparam_name} = ${xloop[$ixx]}|g" <tmp2> tmp3
+
+	sed -e "s|${yloop_var1_name} = ${yloop_var1_default}|${yloop_var1_name} = ${yloop_var1[$iyy]}|g" <tmp3> tmp4
+	sed -e "s|${yloop_var2_name} = ${yloop_var2_default}|${yloop_var2_name} = ${yloop_var2[$iyy]}|g" <tmp4> tmp5
+	mv tmp5 ${RUN_NAME}_${input_file}
+        rm -f ${input_file} tmp1 tmp2 tmp3 tmp4 
+	execfile2=${RUN_NAME}_${execfile}
+	cp $CPDIR/${execfile} ${execfile2}
+	gen_seed  `pwd`
+	cp seed.d ${RUN_NAME}_seed.d
+	mv seed.d ${RUN_NAME}_seed.d_init
+        RUN=${RUN_NAME}_RUNINIT
+	queue_add=1
+    else
+    	
+	    
+    	if [ ${test_for_blowup} -eq 1 ]; then
+		if  test -f ${RUN_NAME}_BLOWUP ; then
+	    	echo -e "${RUN_NAME} in `pwd` is BLOWN UP\n"
+	    	echo -e "Restarting this run from scratch"
+		echo -e "deleting ${RUN_NAME}_RESTART, CONVERGED, and BLOWUP FILES"
+		rm -f ${RUN_NAME}_RESTART ${RUN_NAME}_BLOWUP ${RUN_NAME}_CONVERGED
+	        fi
+        fi 
+
+	if  test -f ${RUN_NAME}_CONVERGED ; then
+	    echo -e "${RUN_NAME} in `pwd` is Converged \n"
+	    queue_add=0
+	else
+	    echo -e "${RUN_NAME} in `pwd` is not Converged.\n"
+	    cp $CPDIR/${input_file} .
+
+	sed -e "s|${zparam_name} = ${zparam_default}|${zparam_name} = ${zloop[$izz]}|g" <${input_file}> tmp1
+	sed -e "s|${yparam_name} = ${yparam_default}|${yparam_name} = ${yloop[$iyy]}|g" <tmp1> tmp2
+	sed -e "s|${xparam_name} = ${xparam_default}|${xparam_name} = ${xloop[$ixx]}|g" <tmp2> tmp3
+
+	sed -e "s|${yloop_var1_name} = ${yloop_var1_default}|${yloop_var1_name} = ${yloop_var1[$iyy]}|g" <tmp3> tmp4
+	sed -e "s|${yloop_var2_name} = ${yloop_var2_default}|${yloop_var2_name} = ${yloop_var2[$iyy]}|g" <tmp4> tmp5
+	    sed -e "s|IRESTART = 0|IRESTART = 1|g" <tmp5> tmp6
+	mv tmp6 ${RUN_NAME}_${input_file}
+	gen_seed  `pwd`
+	mv seed.d ${RUN_NAME}_seed.d
+	rm -f ${input_file} tmp1 tmp2 tmp3 tmp4 tmp5 
+	execfile2=${RUN_NAME}_${execfile}
+	cp $CPDIR/${execfile} ${execfile2}
+	    rescount=0
+	    rescount=`ls -l ${RUN_NAME}_RUNRES*|wc -l`
+	    res="$(( $rescount + 1))"
+	    
+	    echo -e "rescount=$res"
+	    RUN=${RUN_NAME}_RUNRES$res
+	    queue_add=1
+	fi
+    fi
+    
+
+    if [ $queue_add -eq 1 ]; then
+	case $queue_count in
+	    0)
+		echo -e "queue count = $queue_count \n"
+		que_file1=M${MIS}V${yloop[$iyy]}R${xloop[$ixx]}
+		que_file1_dir=`pwd`
+		cp $CPDIR/IBM ./$que_file1
+		echo "cd `pwd`" >> $que_file1
+		echo "time ./${execfile2} $RUN_NAME > $RUN &" >> $que_file1
+		que_file_use=$que_file1_dir/$que_file1
+		;;
+	    *)
+		echo 
+		echo -e "queue count = $queue_count \n"
+		que_filenew="$que_file1"_M${MIS}V${yloop[$iyy]}R${xloop[$ixx]}
+		mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+		echo "cd `pwd`" >> $que_file1_dir/$que_filenew
+		echo "time ./${execfile2} $RUN_NAME  > $RUN &" >> $que_file1_dir/$que_filenew
+		que_file1=$que_filenew
+		que_file_use=$que_file1_dir/$que_filenew
+	esac
+
+	let queue_count=$queue_count+1 
+
+    fi
+
+    if [ "$queue_count" -eq $max_queue_count ]; then
+     queue_count=0
+     echo -n 
+     echo -e "$que_file_use \n"
+     echo -n
+     echo "wait" >> $que_file_use
+     echo -e "sending for qsub \n"
+     que_filenew=${queue_base}_${que_file1}
+     mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+     que_file_use=$que_file1_dir/$que_filenew
+     echo -n
+    # qsub $que_file_use
+    fi
+    cd ${DIR}/${zdir}/${ydir} 
+    done
+    cd ${DIR}/${zdir}
+  done 
+    cd $DIR
+  done
+  setuprund=n      
+  echo -n
+  echo -e "Do you want to set up run for another MIS (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -n
+    echo -e " Exiting the set up \n"
+    echo -n
+    cont=0 
+ ;;
+ esac
+
+ done
+
+# Send the remaining cases to queue
+    echo -n
+    echo -e "Sending the remaining jobs to queue $queue_count \n"
+    echo -n
+
+    if [ "$queue_count" -gt 0 ]; then
+	
+	if [ "$queue_count" -lt $max_queue_count ]; then
+	    echo -n
+	    echo -e "$que_file_use \n"
+	    echo -n
+	    echo "wait" >> $que_file_use
+	    echo -e "sending for qsub \n"
+	    echo -n
+     que_filenew=${queue_base}_${que_file1}
+     mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+     que_file_use=$que_file1_dir/$que_filenew
+      #qsub $que_file_use
+	
+	fi
+    fi
+ exit

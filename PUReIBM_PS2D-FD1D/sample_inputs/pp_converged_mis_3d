@@ -1,0 +1,218 @@
+#!/bin/sh -w
+
+  cont=1
+  nrow=$myy
+  ncol=$mxx
+  nmis=0
+  while [ $cont -eq 1 ]; do
+    echo -e "Post Process for MIS:"
+
+    read MIS
+case $MIS in
+ [1-9] | [1-9][1-9] )
+     nmis="$(( $nmis + 1))"
+    echo -e "NMIS SO FAR = $nmis"
+    mis[$nmis]=$MIS
+;;
+  *)
+  echo -e "THIS MIS VALUE OF $MIS NOT ACCEPTABLE AS"
+  echo -e "MIS must be in the range 1-99"
+esac
+  setuprund=n      
+  echo -n
+  echo -e "Do you want to post processfor another MIS (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -n
+    echo -e " Starting the post processing \n"
+    echo -n
+    cont=0 
+ ;;
+ esac
+
+  done
+    cd $DIR
+  basefile=`basename $1`
+  space="     "
+  for ((izz=0;izz<${mzz};izz+=1)); do
+  zdir=${zloopdirname}${zloop[$izz]}
+  FNuavg_vsx=$DIR/${basefile}_${zdir}_F_Nu_Vs_${xparam_name}.dat
+  FNuavg_vsy=$DIR/${basefile}_${zdir}_F_Nu_Vs_${yparam_name}.dat
+  FNuavg_vsxy=$DIR/${basefile}_${zdir}_F_Nu_Vs_${xparam_name}_${yparam_name}.dat
+
+  F_vsx=$DIR/${basefile}_${zdir}_F_Vs_${xparam_name}.dat
+  Nu_vsx=$DIR/${basefile}_${zdir}_Nu_Vs_${xparam_name}.dat
+
+  F_vsy=$DIR/${basefile}_${zdir}_F_Vs_${yparam_name}.dat
+  Nu_vsy=$DIR/${basefile}_${zdir}_Nu_Vs_${yparam_name}.dat
+  echo "#F, FCONF, Nu, NuCONF Vs ${xparam_name}" > ${FNuavg_vsx}
+  echo "#F, FCONF, Nu, NuCONF, Vs ${yparam_name}" > ${FNuavg_vsy}
+  echo "#F, Nu Vs ${yparam_name}, ${xparam_name}" > ${FNuavg_vsxy}
+  echo "#F, FCONF Vs ${xparam_name}" > ${F_vsx}
+  echo "#F, FCONF Vs ${yparam_name}" > ${F_vsy}
+  echo "#Nu, NuCONF Vs ${xparam_name}" > ${Nu_vsx}
+  echo "#Nu, NuCONF Vs ${yparam_name}" > ${Nu_vsy}
+  echo "VARIABLES= \"${xparam_name} \" \" ${yparam_name}\" \" F \" \" Nu \"" >> ${FNuavg_vsxy}
+  echo "ZONE F=POINT , I= $mxx , J= $myy " >> ${FNuavg_vsxy}
+#exit
+
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    echo "zone  T = \"${yparam_name} = ${yloop[$iyy]}\" " >> ${FNuavg_vsx}
+    echo "zone  T = \"${yparam_name} = ${yloop[$iyy]}\" " >> ${F_vsx}
+    echo "zone  T = \"${yparam_name} = ${yloop[$iyy]}\" " >> ${Nu_vsx}
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    let index=${iyy}*${ncol}+${ixx}
+    MISCONV[$index]=0
+    FDRAGAVG[$index]=0
+    NUAVG[$index]=0
+    F2DRAGAVG[$index]=0
+    NU2AVG[$index]=0
+    FDRAG[$index]=0
+    NU[$index]=0
+    echo -e "index = $index"
+    re=${xloop[$ixx]}
+    xdir=${xloopdirname}${xloop[$ixx]}
+   
+    if  test -d $DIR/$zdir/$ydir/$xdir ; then
+       echo -e $DIR/$zdir/$ydir/$xdir "exists"
+       cd $DIR/$zdir/$ydir/$xdir
+    else 
+       
+       echo -e $DIR/$zdir/$ydir/$xdir "does not exist: so skipping this one"
+	continue 
+    fi 
+    line=${re}
+    fdragline=""
+    nuline=""
+    imis=1
+    nmis_conv=0
+    while [ ${imis} -le ${nmis} ]; do 
+    echo -e "MIS = ${mis[$imis]}"
+    RUN_NAME=MIS${mis[$imis]}
+    
+    if  test -f ${RUN_NAME}_CONVERGED ; then
+    
+     nmis_conv="$(( $nmis_conv + 1))"
+    echo -e "`pwd` is Converged \n"
+    fdrag=`tail -1 ${RUN_NAME}_norm_drag.dat|awk '{print $4}'`
+    fdrag_rat=`tail -1 ${RUN_NAME}_norm_drag.dat|awk '{print $6}'`
+    nu=`tail -1 ${RUN_NAME}_scalfluxsum.dat|awk '{print $6}'`
+    nurat=`tail -1 ${RUN_NAME}_scalfluxsum.dat|awk '{print $9}'`
+    #convert exponent form to floating precision
+    fdrag=`echo "$fdrag" | awk -F"E" 'BEGIN{OFMT="%10.10f"} {print $1 * (10 ^ $2)}'`
+    nu=`echo "$nu" | awk -F"E" 'BEGIN{OFMT="%10.10f"} {print $1 * (10 ^ $2)}'`
+    FDRAGAVG[${index}]=`echo "scale=16 ; (${FDRAGAVG[${index}]}+${fdrag})" | bc` 
+    NUAVG[${index}]=`echo "scale=16 ; (${NUAVG[${index}]}+${nu})" | bc` 
+    F2DRAGAVG[${index}]=`echo "scale=16 ; (${F2DRAGAVG[${index}]}+(${fdrag}*${fdrag}))" | bc` 
+    NU2AVG[${index}]=`echo "scale=16 ; (${NU2AVG[${index}]}+(${nu}*${nu}))" | bc` 
+    fdragline=${fdragline}${space}${fdrag}
+    nuline=${nuline}${space}${nu}
+    else 
+    echo -e "`pwd` is not Converged or ${RUN_NAME} does not exist \n"
+    fi
+    let imis=$imis+1
+    done
+    
+    if [ ${nmis_conv} -lt 1 ]; then
+       cd $DIR/${zdir}/${ydir}
+       continue 
+    else  
+      echo -e "Number of CONVERGED MIS is $nmis_conv" 
+    fi
+    MISCONV[$index]=1
+    FDRAGAVG[$index]=`echo "scale=16 ; (${FDRAGAVG[${index}]}) / (${nmis_conv})" | bc`
+    NUAVG[$index]=`echo "scale=16 ; (${NUAVG[${index}]}) / (${nmis_conv})" | bc`
+    F2DRAGAVG[$index]=`echo "scale=16 ; (${F2DRAGAVG[${index}]}) / (${nmis_conv})" | bc`
+    NU2AVG[$index]=`echo "scale=16 ; (${NU2AVG[${index}]} / ${nmis_conv})" | bc`
+    FCINT[$index]=`echo "scale=16 ; ((${F2DRAGAVG[${index}]}) - (${FDRAGAVG[$index]} * ${FDRAGAVG[$index]}))" | bc`
+    NUCINT[$index]=`echo "scale=16 ; ((${NU2AVG[${index}]}) - (${NUAVG[$index]} * ${NUAVG[$index]}))" | bc`
+    FCINT[$index]=`echo "scale=16 ; (sqrt(${FCINT[$index]})) * 2.571/sqrt(${nmis_conv})" | bc`
+    NUCINT[$index]=`echo "scale=16 ; 2.571*(sqrt (${NUCINT[$index]})/sqrt(${nmis_conv}))" | bc`
+    FDRAG[$index]=${fdragline}
+    NU[$index]=${nuline}
+    line=${line}${space}${FDRAGAVG[${index}]}${space}${FCINT[$index]}${space}${NUAVG[${index}]}${space}${NUCINT[${index}]}
+    #echo "line = $line"
+    echo "${line}" >> ${FNuavg_vsx}
+    echo "${re}${space}${fdragline}" >> ${F_vsx}
+    echo "${re}${space}${nuline}" >> ${Nu_vsx}
+    cd $DIR/${zdir}/${ydir}
+    done
+    cd ${DIR}/${zdir}
+  done 
+echo -e "NOW WRITING VS OUTER LOOP"
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    xdir=${xloopdirname}${xloop[$ixx]}
+    #line=" "
+    re=${xloop[$ixx]}
+   
+    echo "zone  T = \"${xparam_name}=$re    \" " >> ${FNuavg_vsy}
+    echo "zone  T = \"${xparam_name}=$re    \" " >> ${F_vsy}
+    echo "zone  T = \"${xparam_name}=$re    \" " >> ${Nu_vsy}
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    
+    let index=${iyy}*${ncol}+${ixx}
+    volfrac=${yloop[$iyy]}
+
+    if  test -d $DIR/$zdir/$ydir/$xdir ; then
+       echo -e $DIR/$zdir/$ydir/$xdir "exists"
+    else 
+       echo -e $DIR/$zdir/$ydir/$xdir "does not exist: so skipping this one"
+	continue 
+    fi 
+
+    if [ ${MISCONV[${index}]} -eq 0 ]; then
+      echo -e "Not even a single case convered for this case"
+      continue
+    fi
+    fdragline=${FDRAG[${index}]}
+    nuline=${NU[${index}]}
+    line=${volfrac}${space}${FDRAGAVG[${index}]}${space}${FCINT[$index]}${space}${NUAVG[${index}]}${space}${NUCINT[${index}]}
+    #echo "fdragline = $fdragline"
+    echo "${line}" >> ${FNuavg_vsy}
+    echo "${volfrac}${space}${fdragline}" >> ${F_vsy}
+    echo "${volfrac}${space}${nuline}" >> ${Nu_vsy}
+    done
+  done 
+ echo -e "NOW WRITING THE CARPET DATA FILE, ${test_file3}"
+
+  
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    xdir=${xloopdirname}${xloop[$ixx]}
+    re=${xloop[$ixx]}
+    volfrac=${yloop[$iyy]}
+
+    if  test -d $DIR/$zdir/$ydir/$xdir ; then
+       echo -e $DIR/$zdir/$ydir/$xdir "exists"
+    else 
+       echo -e $DIR/$zdir/$ydir/$xdir "does not exist: so skipping this one"
+	continue 
+    fi 
+
+    if [ ${MISCONV[${index}]} -eq 0 ]; then
+      echo -e "Not even a single case convered for this case"
+      continue
+    fi
+    let index=${iyy}*${ncol}+${ixx}
+
+    line=${re}${space}${volfrac}${space}${FDRAGAVG[$index]}${space}${NUAVG[$index]}
+
+    #echo "line = $line"
+    echo "${line}" >> ${FNuavg_vsxy}
+ 
+    done
+  done 
+    cd $DIR
+done
+exit

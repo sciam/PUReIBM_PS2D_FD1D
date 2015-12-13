@@ -1,0 +1,1 @@
+#define PARALLEL 1  

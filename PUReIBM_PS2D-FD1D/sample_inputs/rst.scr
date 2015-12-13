@@ -1,0 +1,122 @@
+#!/bin/sh -w
+  
+  cont=1
+  dry_run=$1
+  
+   #echo -e "DRY_RUN ? = ${dry_run}"
+  while [ $cont -eq 1 ]; do
+    echo -e "Renaming Restart files for MIS:"
+
+    read MIS
+    RUN_NAME=MIS$MIS
+    echo -e "RUN_NAME  = $RUN_NAME, MIS = $MIS"
+    
+    cd $DIR
+
+
+    for ((izz=0;izz<${mzz};izz+=1)); do
+    zdir=${zloopdirname}${zloop[$izz]}
+    echo -e "ZLOOP DIR = $zdir"
+    if  test -d $zdir ; then
+	  echo -e "directory $zdir exists; will be renaming files in this directory"
+       
+    else
+       echo -e "directory $zdir does not exist; skipping this case for renaming"
+        continue
+       
+    fi
+
+    cd $DIR/$zdir
+
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+    if  test -d $ydir ; then
+          echo -e "directory $ydir exists; will be renaming files in this directory"
+       
+    else
+      echo -e "directory $ydir does not exist; skipping this case for renaming"
+        continue
+       
+    fi
+
+    cd $DIR/$zdir/$ydir    
+    
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+    xdir=${xloopdirname}${xloop[$ixx]}
+    if  test -d $xdir ; then
+	  echo -e "directory $xdir exists; will be renaming files in this directory"
+	   else
+	echo -e "directory $xdir does not exist; skipping this case for renaming"
+        continue
+    fi
+    cd $DIR/$zdir/$ydir/$xdir
+
+    res_file=${RUN_NAME}_RESTART
+    if test -f "${res_file}" 
+    then
+    echo -e "${res_file} file exists in `pwd` \n"
+    
+    RESNO=`cat ${res_file}`
+    RESNO=`expr substr $RESNO 1 ${#RESNO}`
+
+    
+	if [ $RESNO -eq 1 ]; then
+	    move=0
+	
+	    echo -e "INDICATOR IN RESTART FILE = ${RESNO}, \n MOVING NOT REQD. \n"
+	else
+	    echo -e "INDICATOR IN RESTART FILE = ${RESNO}, \n MOVING SHUD BE DONE \n"
+	    move=1
+	fi
+    else 
+     echo -e "${res_file} file does not exist in `pwd`, \n Therefore skipping this case \n"
+     echo "${res_file} in directory `pwd`" >> ${LOF2}
+
+     move=0
+    fi
+    
+    if [ $move -eq 1 ]; then
+	if [ ${dry_run} -eq 0 ]; then 
+	    echo "${RUN_NAME} in directory `pwd`" >> "${LOF}"
+
+	    for ((ifile=0;ifile<${nfiles};ifile+=1)); do
+		mv "${RUN_NAME}_${files[$ifile]}_${RESNO}.rst" "${RUN_NAME}_${files[$ifile]}_1.rst" 
+	    done 
+	
+	    echo "1">"${res_file}"
+	
+	else 
+	    
+	echo "${RUN_NAME} in directory `pwd`" >> "${LOF}"
+	fi
+    fi
+	
+    cd ${DIR}/${zdir}/${ydir} 
+    done
+    cd ${DIR}/${zdir}
+  done 
+    cd $DIR
+  done
+  setuprund=n      
+  echo -n
+  echo -e "Do you want to set up run for another MIS (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -n
+    echo -e " Exiting the set up \n"
+    echo -n
+    cont=0 
+ ;;
+ esac
+
+ done
+
+exit 

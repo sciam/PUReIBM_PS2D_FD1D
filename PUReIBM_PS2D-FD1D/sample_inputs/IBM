@@ -1,0 +1,29 @@
+#!/bin/tcsh
+
+# Instructions for new Xeon Cluster users:
+#  To use this script:
+#   1) Save this script as a file named myjob on hpc-class
+#   2) On hpc-class, Issue                   
+#       qsub myjob    to submit the job 
+#        Use qstat -a to see job status, 
+#         Use qdel jobname to delete one of your jobs
+#         jobnames are of the form 1234.hpc3 
+
+# This script has cd  as the first command. 
+# This cd's to the directory from which the qsub command 
+# was issued, which is what most users expect. Change the 
+# cd command if you want something else.
+###########################################
+# Output goes to file BATCH_OUTPUT.
+# Error output goes to file BATCH_ERRORS.
+# If you want the output to go to another file, change BATCH_OUTPUT 
+# or BATCH_ERRORS in the following lines to the full path of that file. 
+
+#PBS  -o BATCH_OUTPUT 
+#PBS  -e BATCH_ERRORS 
+
+### The parallel sample requires 2 nodes to run.
+### Changing to 2 nodes: four processors.
+#PBS -lmem=4gb,nodes=1:ppn=4:quad,cput=48:00:00,walltime=24:00:00
+# Change to directory from which qsub was executed 
+cd $PBS_O_WORKDIR

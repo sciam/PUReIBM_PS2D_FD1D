@@ -1,0 +1,168 @@
+#!/bin/sh -w
+  cont=1
+  queue_count=0
+  queue_base="POST_`basename ${DIR}`"
+  while [ $cont -eq 1 ]; do
+    echo -e "Post Process for MIS:"
+
+    read MIS
+    RUN_NAME=MIS$MIS
+    echo -e "RUN_NAME  = $RUN_NAME, MIS = $MIS"
+    
+    cd $DIR
+  restart=y
+
+ case $restart in
+   y|Y )
+     ires=1
+     echo -n
+     echo -e "Will be restarting the runs\n"
+     echo -n
+ ;;
+   *)
+     echo -e "post processing the old runs\n"
+     ires=0
+ ;;
+ esac
+    for ((izz=0;izz<${mzz};izz+=1)); do
+    zdir=${zloopdirname}${zloop[$izz]}
+    echo -e "ZLOOP DIR = $zdir"
+	if  test -d $zdir ; then
+	    echo -e "directory $zdir exists"
+	else
+	echo -e "directory $zdir does not exists; skipping this case"
+        continue
+	fi	
+
+    cd $DIR/$zdir
+
+    for ((iyy=0;iyy<${myy};iyy+=1)); do
+    ydir=${yloopdirname}${yloop[$iyy]}
+	if  test -d $ydir ; then
+	    echo -e "directory $ydir exists"
+	else
+	echo -e "directory $ydir does not exist; skipping this cae"
+        continue
+	fi	
+
+    cd $DIR/$zdir/$ydir    
+
+    for ((ixx=0;ixx<${mxx};ixx+=1)); do
+
+    xdir=${xloopdirname}${xloop[$ixx]}
+    
+	if  test -d $xdir ; then
+	    echo -e "directory $xdir exists"
+	else
+	echo -e "directory $xdir does not exist; skipping this case"
+	continue
+	fi	
+    cd $DIR/$zdir/$ydir/$xdir
+    	    
+	if  test -f ${RUN_NAME}_CONVERGED ; then
+	    echo -e "`pwd` is Converged \n"
+	if  test -f ${RUN_NAME}_POST_PROCESSED ; then
+	    echo -e "`pwd` is already post_processed \n"
+	    queue_add=0
+	else
+	    echo -e "`pwd` is not post_processed \n"
+	
+	    queue_add=1
+	    RUN=${RUN_NAME}_POST
+	    cp $CPDIR/post.exe .
+	fi
+	else
+	    echo -e "`pwd` is not Converged \n"
+	    queue_add=0
+	fi
+    
+
+    if [ $queue_add -eq 1 ]; then
+	case $queue_count in
+	    0)
+		echo -e "queue count = $queue_count \n"
+		que_file1=M${MIS}V${yloop[$iyy]}R${xloop[$ixx]}
+		que_file1_dir=`pwd`
+		cp $CPDIR/IBM ./$que_file1
+		echo "cd `pwd`" >> $que_file1
+		echo "time ./post.exe $RUN_NAME > $RUN &" >> $que_file1
+		que_file_use=$que_file1_dir/$que_file1
+		;;
+	    *)
+		echo 
+		echo -e "queue count = $queue_count \n"
+		que_filenew="$que_file1"_M${MIS}V${yloop[$iyy]}R${xloop[$ixx]}
+		mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+		echo "cd `pwd`" >> $que_file1_dir/$que_filenew
+		echo "time ./post.exe $RUN_NAME  > $RUN &" >> $que_file1_dir/$que_filenew
+		que_file1=$que_filenew
+		que_file_use=$que_file1_dir/$que_filenew
+	esac
+
+	let queue_count=$queue_count+1 
+
+    fi
+
+    if [ "$queue_count" -eq $max_queue_count ]; then
+     queue_count=0
+     echo -n 
+     echo -e "$que_file_use \n"
+     echo -n
+     echo "wait" >> $que_file_use
+     echo -e "sending for qsub \n"
+     que_filenew=${queue_base}_${que_file1}
+     mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+     que_file_use=$que_file1_dir/$que_filenew
+     echo -n
+     qsub $que_file_use
+    fi
+    cd ${DIR}/${zdir}/${ydir} 
+    done
+    cd ${DIR}/${zdir}
+  done 
+    cd $DIR
+  done
+  setuprund=n      
+  echo -n
+  echo -e "Do you want to set up run for another MIS (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -n
+    echo -e " Exiting the set up \n"
+    echo -n
+    cont=0 
+ ;;
+ esac
+
+ done
+
+# Send the remaining cases to queue
+    echo -n
+    echo -e "Sending the remaining jobs to queue $queue_count \n"
+    echo -n
+
+    if [ "$queue_count" -gt 0 ]; then
+	
+	if [ "$queue_count" -lt $max_queue_count ]; then
+	    echo -n
+	    echo -e "$que_file_use \n"
+	    echo -n
+	    echo "wait" >> $que_file_use
+	    echo -e "sending for qsub \n"
+	    echo -n
+     que_filenew=${queue_base}_${que_file1}
+     mv $que_file1_dir/$que_file1 $que_file1_dir/$que_filenew
+     que_file_use=$que_file1_dir/$que_filenew
+       	    qsub $que_file_use
+	
+	fi
+    fi
+ exit

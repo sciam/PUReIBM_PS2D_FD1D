@@ -1,0 +1,128 @@
+#!/bin/sh -w
+  DIR=$1
+  CPDIR=$1
+
+  RUN_NAME=`basename $1`
+
+  cont=1
+  nmis=0
+  mis_name="mis=("
+  res_stat="status=("
+  case $2 in
+   runs )
+  RUN_NAME=${RUN_NAME}"_RUNS"
+  while [ $cont -eq 1 ]; do
+
+    echo -e "Set up run for MIS:"
+
+    read MIS
+   case $MIS in
+ [1-9] | [1-9][1-9] )
+    echo -e  "MIS = $MIS"
+    mis_name=$mis_name" \"$MIS\""   
+ 
+    nmis="$(( $nmis + 1))"
+    RUN_NAME=${RUN_NAME}_M${MIS}
+    echo -e "RUN_NAME SO FAR = $RUN_NAME"
+
+ echo -n "Do you want to restart for MIS=$MIS. (y/n) [no] "
+  read restart
+
+ case $restart in
+   y|Y )
+     ires=1
+     echo -n
+     echo -e "Will be restarting the runs\n"
+     echo -n
+ ;;
+   *)
+     echo -e "Setting up new runs\n"
+     ires=0
+ ;;
+ esac
+    res_stat=$res_stat" \"$ires\""
+
+;;
+  *)
+  echo -e "THIS MIS VALUE OF $MIS NOT ACCEPTABLE AS"
+  echo -e "MIS must be in the range 1-99"
+  esac
+
+  echo -e "Do you want to set up run for another MIS ? (y/n) [no]"
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -e " Exiting the set up \n"
+    cont=0 
+ ;;
+ esac
+
+ done
+  
+  ;;
+   post )
+  RUN_NAME=${RUN_NAME}"_POST"
+  while [ $cont -eq 1 ]; do
+
+    echo -e "POST PROCESS FOR MIS:"
+
+    read MIS
+   case $MIS in
+ [1-9] | [1-9][1-9] )
+    echo -e  "MIS = $MIS"
+    mis_name=$mis_name" \"$MIS\""   
+ 
+    nmis="$(( $nmis + 1))"
+    RUN_NAME=${RUN_NAME}_M${MIS}
+    echo -e "RUN_NAME SO FAR = $RUN_NAME"
+  ires=1
+  res_stat=$res_stat" \"$ires\""
+;;
+  *)
+  echo -e "THIS MIS VALUE OF $MIS NOT ACCEPTABLE AS"
+  echo -e "MIS must be in the range 1-99"
+  esac
+  echo -e "Do you want to post process for another MIS ? (y/n) [no]"
+  echo -n
+
+  read setuprund
+
+ case $setuprund in
+   y|Y )
+     cont=1
+
+ ;;
+   *)
+    echo -e " Exiting the set up \n"
+    cont=0 
+ ;;
+ esac
+done 
+;;
+*) 
+  echo  -e "no case found for $2 that is input"
+ esac
+
+  cp $CPDIR/IBM_mn ${RUN_NAME}_IBM
+  echo "cat  \$PBS_NODEFILE > ${RUN_NAME}_nodefile" >> ${RUN_NAME}_IBM
+  echo "wc -l ${RUN_NAME}_nodefile" >> ${RUN_NAME}_IBM
+ RUN_FILE=run_matrix_${RUN_NAME}
+      mis_name=${mis_name}")"
+        res_stat=${res_stat}")"
+ echo "#!/bin/sh -w" > ${RUN_FILE}
+ echo "nmis=$nmis" >> ${RUN_FILE}
+ echo $mis_name >> ${RUN_FILE}
+ echo $res_stat >> ${RUN_FILE}
+ echo "nodefile=${RUN_NAME}_nodefile" >> ${RUN_FILE}
+# cat set_matrix >> ${RUN_FILE}
+ cat "main_script_mn" >> ${RUN_FILE}
+ echo "sh ${RUN_FILE} ${CPDIR} $2 ${RUN_NAME} 1> RUN_${RUN_NAME}" >> ${RUN_NAME}_IBM
+ echo "wait" >> ${RUN_NAME}_IBM
+#	qsub ${RUN_NAME}_IBM 
+ exit  
